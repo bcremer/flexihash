@@ -1,7 +1,6 @@
 # Flexihash
 
-Flexihash is a small PHP library which implements [consistent hashing](http://en.wikipedia.org/wiki/Consistent_hashing), which is most useful in distributed caching. It requires PHP5 and uses [PHPUnit](http://simpletest.org/) for unit testing.
-
+Flexihash is a small PHP library which implements [consistent hashing](http://en.wikipedia.org/wiki/Consistent_hashing), which is most useful in distributed caching.
 > [!NOTE]
 > This repo is a fork of https://github.com/pda/flexihash which had no release since 2020.
 
