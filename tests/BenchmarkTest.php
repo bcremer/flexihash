@@ -221,7 +221,7 @@ class BenchmarkTest extends \PHPUnit\Framework\TestCase
         if ($count % 2 == 1) {
             return $values[$middleFloor];
         } else {
-            return ($values[$middleFloor] + $values[$middleFloor + 1]) / 2;
+            return (int) (($values[$middleFloor] + $values[$middleFloor + 1]) / 2);
         }
     }
 }

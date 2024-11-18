@@ -1,20 +1,18 @@
 # Flexihash
 
-[![Build Status](https://travis-ci.org/pda/flexihash.svg?branch=master)](https://travis-ci.org/pda/flexihash) [![Coverage Status](https://coveralls.io/repos/github/pda/flexihash/badge.svg?branch=master)](https://coveralls.io/github/pda/flexihash?branch=master)
-
 Flexihash is a small PHP library which implements [consistent hashing](http://en.wikipedia.org/wiki/Consistent_hashing), which is most useful in distributed caching. It requires PHP5 and uses [PHPUnit](http://simpletest.org/) for unit testing.
 
 ## Installation
 
-[Composer](https://getcomposer.org/) is the recommended installation technique. You can find flexihash on [Packagist](https://packagist.org/packages/flexihash/flexihash) so installation is as easy as
+[Composer](https://getcomposer.org/) is the recommended installation technique. You can find flexihash on [Packagist](https://packagist.org/packages/bcremer/flexihash) so installation is as easy as
 ```
-composer require flexihash/flexihash
+composer require bcremer/flexihash
 ```
 or in your `composer.json`
 ```json
 {
     "require": {
-        "flexihash/flexihash": "^3.0.0"
+        "bcremer/flexihash": "^4.0.0"
     }
 }
 ```
