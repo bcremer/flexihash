@@ -3,6 +3,7 @@
 Flexihash is a small PHP library which implements [consistent hashing](http://en.wikipedia.org/wiki/Consistent_hashing), which is most useful in distributed caching.
 > [!NOTE]
 > This repo is a fork of https://github.com/pda/flexihash which had no release since 2020.
+> Originally authored by @pda, @dmnc and @serima
 
 ## Installation
 
@@ -32,9 +33,8 @@ $hash->lookup('object-a'); // "cache-1"
 $hash->lookup('object-b'); // "cache-2"
 
 // add and remove
-$hash
-  ->addTarget('cache-4')
-  ->removeTarget('cache-1');
+$hash->addTarget('cache-4');
+$hash->removeTarget('cache-1');
 
 // lookup with next-best fallback (for redundant writes)
 $hash->lookupList('object', 2); // ["cache-2", "cache-4"]
