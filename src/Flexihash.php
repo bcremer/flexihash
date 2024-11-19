@@ -1,10 +1,23 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Flexihash;
 
-use Flexihash\Hasher\HasherInterface;
 use Flexihash\Hasher\Crc32Hasher;
+use Flexihash\Hasher\HasherInterface;
+
+use function array_key_exists;
+use function array_key_first;
+use function array_keys;
+use function array_unique;
+use function array_values;
+use function count;
+use function ksort;
+use function round;
+use function sprintf;
+
+use const SORT_REGULAR;
 
 /**
  * A simple consistent hashing implementation with pluggable hash algorithms.
@@ -16,122 +29,95 @@ class Flexihash
 {
     /**
      * The number of positions to hash each target to.
-     *
-     * @var int
      */
-    private $replicas = 64;
+    private int $replicas = 64;
 
     /**
-     * The hash algorithm, encapsulated in a Flexihash_Hasher implementation.
-     * @var object Flexihash_Hasher
+     * The hash algorithm, encapsulated in a HasherInterface implementation.
      */
-    private $hasher;
+    private HasherInterface $hasher;
 
     /**
      * Internal counter for current number of targets.
-     * @var int
      */
-    private $targetCount = 0;
+    private int $targetCount = 0;
 
     /**
      * Internal map of positions (hash outputs) to targets.
-     * @var array { position => target, ... }
+     *
+     * @var array<int, string>
      */
-    private $positionToTarget = [];
+    private array $positionToTarget = [];
 
     /**
      * Internal map of targets to lists of positions that target is hashed to.
-     * @var array { target => [ position, position, ... ], ... }
+     *
+     * @var array<string, list<int>>
      */
-    private $targetToPositions = [];
+    private array $targetToPositions = [];
 
     /**
      * Whether the internal map of positions to targets is already sorted.
-     * @var bool
      */
-    private $positionToTargetSorted = false;
+    private bool $positionToTargetSorted = false;
 
-    /**
-     * Sorted positions.
-     *
-     * @var array
-     */
-    private $sortedPositions = [];
+    /** @var list<int> */
+    private array $sortedPositions = [];
 
     /**
      * Internal counter for current number of positions.
-     *
-     * @var integer
      */
-    private $positionCount = 0;
+    private int $positionCount = 0;
 
-    /**
-     * Constructor.
-     * @param \Flexihash\Hasher\HasherInterface $hasher
-     * @param int $replicas Amount of positions to hash each target to.
-     */
-    public function __construct(HasherInterface $hasher = null, $replicas = null)
+    /** @param int|null $replicas Amount of positions to hash each target to. */
+    public function __construct(HasherInterface|null $hasher = null, int|null $replicas = null)
     {
         $this->hasher = $hasher ? $hasher : new Crc32Hasher();
-        if (!empty($replicas)) {
-            $this->replicas = $replicas;
+
+        if ($replicas === null) {
+            return;
         }
+
+        $this->replicas = $replicas;
     }
 
-    /**
-     * Add a target.
-     * @param string $target
-     * @param float $weight
-     * @chainable
-     */
-    public function addTarget($target, $weight = 1)
+    public function addTarget(string $target, float $weight = 1): void
     {
-        if (isset($this->targetToPositions[$target])) {
-            throw new Exception("Target '$target' already exists.");
+        if (array_key_exists($target, $this->targetToPositions)) {
+            throw new Exception(sprintf("Target '%s' already exists.", $target));
         }
 
         $this->targetToPositions[$target] = [];
 
         // hash the target into multiple positions
-        for ($i = 0; $i < round($this->replicas * $weight); ++$i) {
-            $position = $this->hasher->hash($target.$i);
-            $this->positionToTarget[$position] = $target; // lookup
-            $this->targetToPositions[$target] [] = $position; // target removal
+        $partitionCount = round($this->replicas * $weight);
+        for ($i = 0; $i < $partitionCount; ++$i) {
+            $position                           = $this->hasher->hash($target . $i);
+            $this->positionToTarget[$position]  = $target; // lookup
+            $this->targetToPositions[$target][] = $position; // target removal
         }
 
         $this->positionToTargetSorted = false;
         ++$this->targetCount;
-
-        return $this;
     }
 
     /**
      * Add a list of targets.
      *
-     * @param array $targets
-     * @param float $weight
-     * @return self fluent
+     * @param array<string> $targets
      */
-    public function addTargets($targets, $weight = 1)
+    public function addTargets(array $targets, float $weight = 1): void
     {
         foreach ($targets as $target) {
             $this->addTarget($target, $weight);
         }
-
-        return $this;
     }
 
-    /**
-     * Remove a target.
-     *
-     * @param string $target
-     * @return self fluent
-     * @throws \Flexihash\Exception when target does not exist
-     */
-    public function removeTarget($target)
+    /** @throws Exception when target does not exist. */
+    public function removeTarget(string $target): void
     {
-        if (!isset($this->targetToPositions[$target])) {
-            throw new Exception("Target '$target' does not exist.");
+        if (! isset($this->targetToPositions[$target])) {
+            throw new Exception(sprintf("Target '%s' does not exist.", $target));
         }
 
         foreach ($this->targetToPositions[$target] as $position) {
@@ -142,13 +128,12 @@ class Flexihash
 
         $this->positionToTargetSorted = false;
         --$this->targetCount;
-
-        return $this;
     }
 
     /**
      * A list of all potential targets.
-     * @return array
+     *
+     * @return list<string>
      */
     public function getAllTargets(): array
     {
@@ -157,11 +142,10 @@ class Flexihash
 
     /**
      * Looks up the target for the given resource.
-     * @param string $resource
-     * @return string
-     * @throws \Flexihash\Exception when no targets defined
+     *
+     * @throws Exception when no targets defined.
      */
-    public function lookup($resource): string
+    public function lookup(string $resource): string
     {
         $targets = $this->lookupList($resource, 1);
         if (empty($targets)) {
@@ -175,96 +159,83 @@ class Flexihash
      * Get a list of targets for the resource, in order of precedence.
      * Up to $requestedCount targets are returned, less if there are fewer in total.
      *
-     * @param string $resource
-     * @param int $requestedCount The length of the list to return
-     * @return array List of targets
-     * @throws \Flexihash\Exception when count is invalid
+     * @param positive-int $requestedCount The length of the list to return
+     *
+     * @return list<string> List of targets
      */
-    public function lookupList($resource, $requestedCount): array
+    public function lookupList(string $resource, int $requestedCount): array
     {
-        if (!$requestedCount) {
-            throw new Exception('Invalid count requested');
-        }
-
         // handle no targets
-        if (empty($this->positionToTarget)) {
+        if ($this->positionToTarget === []) {
             return [];
         }
 
         // optimize single target
-        if ($this->targetCount == 1) {
-            return array_unique(array_values($this->positionToTarget));
+        if ($this->targetCount === 1) {
+            return [$this->positionToTarget[array_key_first($this->positionToTarget)]];
         }
 
-        // hash resource to a position
-        $resourcePosition = $this->hasher->hash($resource);
-
-        $results = [];
-
         $this->sortPositionTargets();
+        $offset = self::bisectLeft(
+            $this->sortedPositions,
+            $this->hasher->hash($resource),
+            $this->positionCount,
+        );
 
-        $positions = $this->sortedPositions;
-        $low = 0;
-        $high = $this->positionCount - 1;
-        $notfound = false;
+        $resCount = 1;
+        do {
+            $offset   %= $this->positionCount;
+            $results[] = $this->positionToTarget[$this->sortedPositions[$offset]];
+            $offset++;
+        } while ($resCount++ < $requestedCount);
 
-        // binary search of the first position greater than resource position
-        while ($high >= $low || $notfound = true) {
-            $probe = (int) floor(($high + $low) / 2);
+        return array_values(array_unique($results));
+    }
 
-            if ($notfound === false && $positions[$probe] <= $resourcePosition) {
-                $low = $probe + 1;
-            } elseif ($probe === 0 || $resourcePosition > $positions[$probe - 1] || $notfound === true) {
-                if ($notfound) {
-                    // if not found is true, it means binary search failed to find any position greater
-                    // than ressource position, in this case, the last position is the bigest lower
-                    // position and first position is the next one after cycle
-                    $probe = 0;
-                }
+    /**
+     * Locate the insertion point for $value in $sortedArray to maintain sorted order.
+     *
+     * @param list<int> $sortedArray
+     */
+    public static function bisectLeft(array $sortedArray, int $value, int $arraySize): int
+    {
+        $low  = 0;
+        $high = $arraySize - 1;
 
-                $results[] = $this->positionToTarget[$positions[$probe]];
+        if ($value < $sortedArray[$low]) {
+            return 0;
+        }
 
-                if ($requestedCount > 1) {
-                    for ($i = $requestedCount - 1; $i > 0; --$i) {
-                        if (++$probe > $this->positionCount - 1) {
-                            $probe = 0; // cycle
-                        }
-                        $results[] = $this->positionToTarget[$positions[$probe]];
-                    }
-                }
+        if ($value >= $sortedArray[$high]) {
+            return $arraySize; // out of bounds
+        }
 
-                break;
+        while ($low < $high) {
+            $middle = (int) (($low + $high) / 2);
+
+            if ($sortedArray[$middle] < $value) {
+                $low = $middle + 1;
             } else {
-                $high = $probe - 1;
+                $high = $middle;
             }
         }
 
-        return array_unique($results);
+        return $high;
     }
-
-    public function __toString(): string
-    {
-        return sprintf(
-            '%s{targets:[%s]}',
-            get_class($this),
-            implode(',', $this->getAllTargets())
-        );
-    }
-
-    // ----------------------------------------
-    // private methods
 
     /**
      * Sorts the internal mapping (positions to targets) by position.
      */
-    private function sortPositionTargets()
+    private function sortPositionTargets(): void
     {
         // sort by key (position) if not already
-        if (!$this->positionToTargetSorted) {
-            ksort($this->positionToTarget, SORT_REGULAR);
-            $this->positionToTargetSorted = true;
-            $this->sortedPositions = array_keys($this->positionToTarget);
-            $this->positionCount = count($this->sortedPositions);
+        if ($this->positionToTargetSorted) {
+            return;
         }
+
+        ksort($this->positionToTarget, SORT_REGULAR);
+        $this->positionToTargetSorted = true;
+        $this->sortedPositions        = array_keys($this->positionToTarget);
+        $this->positionCount          = count($this->sortedPositions);
     }
 }
