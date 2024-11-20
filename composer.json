@@ -1,7 +1,7 @@
 {
     "name": "bcremer/flexihash",
     "type": "library",
-    "description": "Flexihash is a small PHP library which implements consistent hashing",
+    "description": "Library which implements consistent hashing. Modernized fork of flexihash/flexihash.",
     "homepage": "https://github.com/bremer/flexihash",
     "license": "MIT",
     "authors": [
