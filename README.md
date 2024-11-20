@@ -15,7 +15,7 @@ or in your `composer.json`
 ```json
 {
     "require": {
-        "bcremer/flexihash": "^4.0.0"
+        "bcremer/flexihash": "^5.0.0"
     }
 }
 ```
