@@ -10,7 +10,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - Added extended PHPStan types
 - Added Static Analysis (PHPStan)
 - Added Doctrine Coding Standard
-- Improved lookup performance
+- Added PHPBench as benchmark runner
+- Improved lookup performance by approx 20% compared to v4.0.0
 
 ## [4.0.0]
 
