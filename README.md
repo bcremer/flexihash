@@ -44,18 +44,30 @@ $hash->removeTarget('cache-2');
 $hash->lookup('object'); // "cache-4"
 ```
 
+## Benchmarks
+
+Performance can be tested with [PHPBench](https://phpbench.readthedocs.io).
+
+```sh
+git checkout main
+./vendor/bin/phpbench run --report=aggregate --iterations=4  --tag=branch_main
+
+git checkout some-branch
+./vendor/bin/phpbench run --report=aggregate --iterations=4  --ref=branch_main
+```
+
 ## Tests
 
 ### Unit Test
 
-```
-% vendor/bin/phpunit
+```sh
+composer test
 ```
 
 ### Benchmark Test
 
-```
-% vendor/bin/phpunit tests/BenchmarkTest.php
+```sh
+vendor/bin/phpunit tests/BenchmarkTest.php
 ```
 
 ## Further Reading
